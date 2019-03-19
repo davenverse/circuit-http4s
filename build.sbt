@@ -9,7 +9,7 @@ lazy val server = project.in(file("server"))
   .settings(
     name := "circuit-http4s-server",
     libraryDependencies ++= Seq(
-      "org.http4s" %% "http4s-core" % http4sV
+      "org.http4s" %% "http4s-core" % http4sV % Test
     )
   )
 
