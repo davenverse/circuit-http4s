@@ -34,7 +34,7 @@ lazy val contributors = Seq(
 
 val catsV = "1.6.1"
 val catsEffectV = "1.3.1"
-val fs2V = "1.0.4"
+val fs2V = "1.0.5"
 
 val circuitV = "0.2.3"
 val http4sV = "0.20.1"
