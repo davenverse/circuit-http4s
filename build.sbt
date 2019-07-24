@@ -1,6 +1,7 @@
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 lazy val `circuit-http4s` = project.in(file("."))
+  .disablePlugins(MimaPlugin)
   .settings(commonSettings, releaseSettings, skipOnPublishSettings)
   .aggregate(server, client, docs)
 
@@ -176,6 +177,7 @@ lazy val mimaSettings = {
   lazy val extraVersions: Set[String] = Set()
 
   Seq(
+    mimaFailOnNoPrevious := false,
     mimaFailOnProblem := mimaVersions(version.value).toList.headOption.isDefined,
     mimaPreviousArtifacts := (mimaVersions(version.value) ++ extraVersions)
       .filterNot(excludedVersions.contains(_))
