@@ -24,6 +24,7 @@ lazy val client = project.in(file("client"))
   )
 
 lazy val docs = project.in(file("docs"))
+  .disablePlugins(MimaPlugin)
   .settings(commonSettings, skipOnPublishSettings, micrositeSettings)
   .dependsOn(server,client)
   .enablePlugins(MicrositesPlugin)
