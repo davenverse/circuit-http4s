@@ -43,7 +43,7 @@ val http4sV = "0.20.10"
 
 val specs2V = "4.6.0"
 
-val kindProjectorV = "0.9.10"
+val kindProjectorV = "0.10.0"
 val betterMonadicForV = "0.3.0"
 
 // General Settings
@@ -60,7 +60,7 @@ lazy val commonSettings = Seq(
       "-doc-source-url", "https://github.com/ChristopherDavenport/circuit-http4s/blob/v" + version.value + "€{FILE_PATH}.scala"
   ),
 
-  addCompilerPlugin("org.spire-math" % "kind-projector" % kindProjectorV cross CrossVersion.binary),
+  addCompilerPlugin("org.typelevel" % "kind-projector" % kindProjectorV cross CrossVersion.binary),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % betterMonadicForV),
   libraryDependencies ++= Seq(
     "org.typelevel"               %% "cats-core"                  % catsV,
