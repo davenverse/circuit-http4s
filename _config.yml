@@ -1,0 +1,11 @@
+name: circuit-http4s
+baseurl: /circuit-http4s
+description: CircuitBreaker backed Http4s Middlewares
+highlighter: rouge
+docs: true
+collections:
+  tut:
+    output: true
+version: 0.2.1-SNAPSHOT
+org: io.chrisdavenport
+markdown: kramdown
