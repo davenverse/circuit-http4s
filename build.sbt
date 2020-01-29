@@ -34,14 +34,14 @@ lazy val contributors = Seq(
   "ChristopherDavenport" -> "Christopher Davenport"
 )
 
-val catsV = "1.6.1"
-val catsEffectV = "1.4.0"
-val fs2V = "1.0.5"
+val catsV = "2.1.0"
+val catsEffectV = "2.0.0"
+val fs2V = "2.2.1"
 
-val circuitV = "0.2.3"
-val http4sV = "0.20.17"
+val circuitV = "0.3.0"
+val http4sV = "0.21.0-RC2"
 
-val specs2V = "4.7.1"
+val specs2V = "4.8.3"
 
 val kindProjectorV = "0.10.3"
 val betterMonadicForV = "0.3.1"
@@ -50,9 +50,8 @@ val betterMonadicForV = "0.3.1"
 lazy val commonSettings = Seq(
   organization := "io.chrisdavenport",
 
-  scalaVersion := "2.12.8",
+  scalaVersion := "2.12.10",
   crossScalaVersions := Seq(scalaVersion.value, "2.11.12"),
-  scalacOptions += "-Yrangepos",
 
   scalacOptions in (Compile, doc) ++= Seq(
       "-groups",
