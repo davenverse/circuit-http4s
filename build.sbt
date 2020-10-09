@@ -41,7 +41,7 @@ val fs2V = "2.2.2"
 val circuitV = "0.3.1"
 val http4sV = "0.21.7"
 
-val specs2V = "4.8.3"
+val specs2V = "4.10.4"
 
 val kindProjectorV = "0.11.0"
 val betterMonadicForV = "0.3.1"
