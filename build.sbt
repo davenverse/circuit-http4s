@@ -38,12 +38,12 @@ val catsV = "2.1.1"
 val catsEffectV = "2.1.4"
 val fs2V = "2.2.2"
 
-val circuitV = "0.4.1"
-val http4sV = "0.21.9"
+val circuitV = "0.3.1"
+val http4sV = "0.21.11"
 
 val specs2V = "4.8.3"
 
-val kindProjectorV = "0.11.0"
+val kindProjectorV = "0.11.1"
 val betterMonadicForV = "0.3.1"
 
 // General Settings
