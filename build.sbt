@@ -34,7 +34,7 @@ lazy val contributors = Seq(
   "ChristopherDavenport" -> "Christopher Davenport"
 )
 
-val catsV = "2.1.1"
+val catsV = "2.4.0"
 val catsEffectV = "2.1.4"
 val fs2V = "2.2.2"
 
