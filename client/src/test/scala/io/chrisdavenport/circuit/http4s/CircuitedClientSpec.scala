@@ -27,7 +27,7 @@ class CircuitedClientSpec extends Specification {
         e <- newClient.expect[String](Request[IO](Method.GET)).attempt
       } yield e
 
-      test.unsafeRunSync must beLeft.like{
+      test.unsafeRunSync() must beLeft.like{
         case _: CircuitBreaker.RejectedExecution => ok
       }
     }

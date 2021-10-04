@@ -12,6 +12,6 @@ object CircuitedServer {
 
   def httpRoutes[F[_], A, B](
     circuit: CircuitBreaker[F]
-  )(h: Kleisli[OptionT[F, ?], A, B]): Kleisli[OptionT[F, ?], A, B] =
-    Kleisli[OptionT[F, ?], A, B](a => OptionT(circuit.protect(h.run(a).value)))
+  )(h: Kleisli[OptionT[F, *], A, B]): Kleisli[OptionT[F, *], A, B] =
+    Kleisli[OptionT[F, *], A, B](a => OptionT(circuit.protect(h.run(a).value)))
 }
