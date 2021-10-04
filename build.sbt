@@ -13,7 +13,7 @@ val specs2V = "4.8.3"
 
 val scala213 = "2.13.6" 
 
-ThisBuild / crossScalaVersions := Seq("2.12.15", scala213)
+ThisBuild / crossScalaVersions := Seq("2.12.14", scala213)
 
 lazy val `circuit-http4s` = project.in(file("."))
   .disablePlugins(MimaPlugin)
