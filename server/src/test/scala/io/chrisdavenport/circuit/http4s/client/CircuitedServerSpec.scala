@@ -24,7 +24,7 @@ class CircuitedServerSpec extends Specification {
         e <- newApp(Request[IO](Method.GET)).attempt
       } yield e
 
-      test.unsafeRunSync must beLeft.like{
+      test.unsafeRunSync() must beLeft.like{
         case _: CircuitBreaker.RejectedExecution => ok
       }
     }
