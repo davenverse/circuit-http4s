@@ -3,14 +3,13 @@ package io.chrisdavenport.circuit.http4s.client
 import io.chrisdavenport.circuit.CircuitBreaker
 import cats.syntax.all._
 import cats.effect._
-import cats.effect.concurrent._
 import org.http4s._
 import org.http4s.client._
 import cats._
 import scala.concurrent.duration._
 object CircuitedClient {
 
-  def apply[F[_]: Bracket[*[_], Throwable]](cr: CircuitBreaker[F])(c: Client[F]): Client[F] = 
+  def apply[F[_]: Concurrent](cr: CircuitBreaker[F])(c: Client[F]): Client[F] = 
     generic(Function.const[CircuitBreaker[F], Request[F]](cr))(c)
 
 
@@ -21,7 +20,7 @@ object CircuitedClient {
     maxResetTimeout: Duration = Duration.Inf,
     modifications: CircuitBreaker[F] => CircuitBreaker[F] = {x: CircuitBreaker[F] => x},
     shouldFail: (Request[F], Response[F]) => Boolean = defaultShouldFail[F](_, _)
-  )(client: Client[F])(implicit F: Sync[F], C: Clock[F]): F[Client[F]] = {
+  )(client: Client[F])(implicit F: Temporal[F]): F[Client[F]] = {
     io.chrisdavenport.mapref.MapRef.ofSingleImmutableMap[F, RequestKey, CircuitBreaker.State](Map.empty[RequestKey, CircuitBreaker.State]).map{
       mapref => 
         val f : Request[F] => CircuitBreaker[F] = {req: Request[F] => 
@@ -38,7 +37,7 @@ object CircuitedClient {
   def generic[F[_], A](
     cbf: Request[F] => CircuitBreaker[F],
     shouldFail: (Request[F], Response[F]) => Boolean = defaultShouldFail[F](_, _)
-  )(client: Client[F])(implicit F: Bracket[F, Throwable]): Client[F] = {
+  )(client: Client[F])(implicit F: Concurrent[F]): Client[F] = {
     Client[F]{req: Request[F] => 
       val cb = cbf(req)
       Resource(
@@ -58,12 +57,55 @@ object CircuitedClient {
     }
   }
 
+  def byKeyResource[F[_]](
+    maxFailures: Int,
+    resetTimeout: FiniteDuration,
+    exponentialBackoffFactor: Double = 1,
+    maxResetTimeout: Duration = Duration.Inf,
+    modifications: CircuitBreaker[Resource[F, *]] => CircuitBreaker[Resource[F, *]] = {x: CircuitBreaker[Resource[F, *]] => x},
+    shouldFail: (Request[F], Response[F]) => Boolean = defaultShouldFail[F](_, _)
+  )(client: Client[F])(implicit F: Async[F]): F[Client[F]] = {
+    io.chrisdavenport.mapref.MapRef.inSingleImmutableMap[F, Resource[F, *], RequestKey, CircuitBreaker.State](Map.empty[RequestKey, CircuitBreaker.State]).map{
+      mapref => 
+        val f : Request[F] => CircuitBreaker[Resource[F, *]] = {req: Request[F] => 
+          val key = RequestKey.fromRequest(req)
+          val optRef = mapref(key)
+          val ref = new LiftedRefDefaultStorage(optRef, CircuitBreaker.Closed(0))
+          val cbInit = CircuitBreaker.unsafe(ref, maxFailures, resetTimeout, exponentialBackoffFactor, maxResetTimeout, Resource.eval(F.unit), Resource.eval(F.unit), Resource.eval(F.unit), Resource.eval(F.unit))
+          modifications(cbInit)
+        }
+        genericResource(f, shouldFail)(client)
+    }
+  }
+
+  def genericResource[F[_], A](
+    cbf: Request[F] => CircuitBreaker[Resource[F, *]],
+    shouldFail: (Request[F], Response[F]) => Boolean = defaultShouldFail[F](_, _)
+  )(client: Client[F])(implicit F: Concurrent[F]): Client[F] = {
+    Client[F]{ req: Request[F] => 
+      val circuit = cbf(req)
+      val action = client.run(req).flatMap(resp => 
+        if (shouldFail(req, resp)) Resource.eval(Concurrent[F].raiseError(CircuitedClientResourceThrowable(resp)))
+        else Resource.pure[F, Response[F]](resp)
+      )
+      
+      circuit.protect(action).handleErrorWith[Response[F], Throwable]{
+        case e: CircuitedClientResourceThrowable[F] @unchecked => Resource.pure[F, Response[F]](e.resp)
+        case e => Resource.eval(F.raiseError(e))
+      }
+    }
+  }
+
   def defaultShouldFail[F[_]](req: Request[F], resp: Response[F]): Boolean = {
     val _ = req
     resp.status.responseClass == Status.ServerError
   }
 
   private case class CircuitedClientThrowable[F[_]](resp: Response[F], shutdown: F[Unit]) 
+    extends Throwable 
+    with scala.util.control.NoStackTrace
+
+  private case class CircuitedClientResourceThrowable[F[_]](resp: Response[F]) 
     extends Throwable 
     with scala.util.control.NoStackTrace
   

@@ -5,15 +5,14 @@ import cats.effect._
 import org.http4s._
 import org.http4s.implicits._
 import org.http4s.client._
-import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
+import cats.effect.unsafe.implicits.global
 
 import org.specs2.mutable.Specification
 
 class CircuitedClientSpec extends Specification {
   "CircuitedClient" should {
     "Fail Requests on a Failing Service" in {
-      implicit val T = IO.timer(global)
       val app: HttpApp[IO] = HttpRoutes.of[IO]{
         case _ => IO.raiseError(new Throwable("Boo!"))
       }.orNotFound

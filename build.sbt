@@ -3,12 +3,12 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 
 val catsV = "2.6.1"
-val catsEffectV = "2.5.4"
-val fs2V = "2.5.9"
+val catsEffectV = "3.2.9"
+val fs2V = "3.1.3"
 
-val circuitV = "0.4.4"
-val http4sV = "0.21.29"
-val mapRefV = "0.1.1"
+val circuitV = "0.5.0-M2"
+val http4sV = "0.23.4"
+val mapRefV = "0.2.0"
 
 val specs2V = "4.8.3"
 
