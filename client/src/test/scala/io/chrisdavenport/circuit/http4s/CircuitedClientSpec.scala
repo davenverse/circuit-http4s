@@ -60,7 +60,7 @@ class CircuitedClientSpec extends Specification {
       implicit val T = IO.timer(global)
       val app: HttpApp[IO] = HttpRoutes.of[IO]{
         case GET -> Root / "fail" => Response[IO](Status.InternalServerError).pure[IO]
-        case GET -> Root / "success" => Response[IO](Status.Ok).pure[IO]
+        case GET -> Root / "success" => Response[IO](Status.Ok).withEntity("Hey There").pure[IO]
       }.orNotFound
 
       val iClient = Client.fromHttpApp(app)
@@ -73,7 +73,9 @@ class CircuitedClientSpec extends Specification {
         e <- newClient.expect[String](Request[IO](Method.GET, uri"http://www.adifferentsite.com/success")).attempt
       } yield e
 
-      test.unsafeRunSync() must beRight
+      test.unsafeRunSync() must beRight.like{
+        case base => base must_=== "Hey There"
+      }
     }
   }
 }
