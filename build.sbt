@@ -59,6 +59,8 @@ lazy val commonSettings = Seq(
     "io.chrisdavenport"           %% "circuit"                    % circuitV,
     "io.chrisdavenport"           %% "mapref"                     % mapRefV,
 
+    "org.http4s" %% "http4s-dsl" % http4sV % Test,
+
     "org.specs2"                  %% "specs2-core"                % specs2V       % Test,
     "org.specs2"                  %% "specs2-scalacheck"          % specs2V       % Test
   )

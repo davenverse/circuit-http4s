@@ -20,7 +20,7 @@ object CircuitedClient {
     exponentialBackoffFactor: Double = 1,
     maxResetTimeout: Duration = Duration.Inf,
     modifications: CircuitBreaker[F] => CircuitBreaker[F] = {x: CircuitBreaker[F] => x},
-    shouldFail: (Request[F], Response[F]) => ShouldTripCircuitBreaker = defaultShouldFail[F](_, _)
+    shouldFail: (Request[F], Response[F]) => ShouldCircuitBreakerSeeAsFailure = defaultShouldFail[F](_, _)
   )(client: Client[F])(implicit F: Sync[F], C: Clock[F]): F[Client[F]] = {
     io.chrisdavenport.mapref.MapRef.ofSingleImmutableMap[F, RequestKey, CircuitBreaker.State](Map.empty[RequestKey, CircuitBreaker.State]).map{
       mapref => 
@@ -37,7 +37,7 @@ object CircuitedClient {
 
   def generic[F[_], A](
     cbf: Request[F] => CircuitBreaker[F],
-    shouldFail: (Request[F], Response[F]) => ShouldTripCircuitBreaker = defaultShouldFail[F](_, _)
+    shouldFail: (Request[F], Response[F]) => ShouldCircuitBreakerSeeAsFailure = defaultShouldFail[F](_, _)
   )(client: Client[F])(implicit F: Bracket[F, Throwable]): Client[F] = {
     Client[F]{req: Request[F] => 
       val cb = cbf(req)
@@ -46,8 +46,8 @@ object CircuitedClient {
           client.run(req).allocated.flatMap{
             case (resp, shutdown) => 
               shouldFail(req, resp) match {
-                case StrikeAgainstCircuitBreaker => F.raiseError[(Response[F], F[Unit])](CircuitedClientThrowable(resp, shutdown))
-                case NoStrikeAgainstCircuitBreaker => (resp, shutdown).pure[F]
+                case CountAsFailure => F.raiseError[(Response[F], F[Unit])](CircuitedClientThrowable(resp, shutdown))
+                case CountAsSuccess => (resp, shutdown).pure[F]
               }
           }
         ).handleErrorWith{
@@ -60,14 +60,14 @@ object CircuitedClient {
     }
   }
 
-  sealed trait ShouldTripCircuitBreaker
-  case object StrikeAgainstCircuitBreaker extends ShouldTripCircuitBreaker
-  case object NoStrikeAgainstCircuitBreaker extends ShouldTripCircuitBreaker
+  sealed trait ShouldCircuitBreakerSeeAsFailure
+  case object CountAsFailure extends ShouldCircuitBreakerSeeAsFailure
+  case object CountAsSuccess extends ShouldCircuitBreakerSeeAsFailure
 
-  def defaultShouldFail[F[_]](req: Request[F], resp: Response[F]): ShouldTripCircuitBreaker = {
+  def defaultShouldFail[F[_]](req: Request[F], resp: Response[F]): ShouldCircuitBreakerSeeAsFailure = {
     val _ = req
-    if (resp.status.responseClass == Status.ServerError) StrikeAgainstCircuitBreaker
-    else NoStrikeAgainstCircuitBreaker
+    if (resp.status.responseClass == Status.ServerError) CountAsFailure
+    else CountAsSuccess
   }
 
   private case class CircuitedClientThrowable[F[_]](resp: Response[F], shutdown: F[Unit]) 
@@ -133,7 +133,6 @@ object CircuitedClient {
     
     def modifyState[B](state: cats.data.State[A,B]): F[B] = 
       modify{s => state.run(s).value}
-    
   }
 
 
