@@ -60,17 +60,12 @@ object CircuitedClient {
 
   def defaultShouldFail[F[_]](req: Request[F], resp: Response[F]): Boolean = {
     val _ = req
-    if (resp.status.code >= 500) true
-    else false
+    resp.status.responseClass == Status.ServerError
   }
 
   private case class CircuitedClientThrowable[F[_]](resp: Response[F], shutdown: F[Unit]) 
     extends Throwable 
     with scala.util.control.NoStackTrace
-
-
-
-  
   
   implicit private val eqState: Eq[CircuitBreaker.State] = Eq.instance{
     case (CircuitBreaker.HalfOpen, CircuitBreaker.HalfOpen) => true
