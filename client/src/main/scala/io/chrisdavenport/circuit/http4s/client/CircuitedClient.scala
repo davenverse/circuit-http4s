@@ -20,7 +20,7 @@ object CircuitedClient {
     exponentialBackoffFactor: Double = 1,
     maxResetTimeout: Duration = Duration.Inf,
     modifications: CircuitBreaker[F] => CircuitBreaker[F] = {x: CircuitBreaker[F] => x},
-    shouldFail: (Request[F], Response[F]) => Boolean = defaultShouldFail[F](_, _)
+    shouldFail: (Request[F], Response[F]) => ShouldTripCircuitBreaker = defaultShouldFail[F](_, _)
   )(client: Client[F])(implicit F: Sync[F], C: Clock[F]): F[Client[F]] = {
     io.chrisdavenport.mapref.MapRef.ofSingleImmutableMap[F, RequestKey, CircuitBreaker.State](Map.empty[RequestKey, CircuitBreaker.State]).map{
       mapref => 
@@ -37,7 +37,7 @@ object CircuitedClient {
 
   def generic[F[_], A](
     cbf: Request[F] => CircuitBreaker[F],
-    shouldFail: (Request[F], Response[F]) => Boolean = defaultShouldFail[F](_, _)
+    shouldFail: (Request[F], Response[F]) => ShouldTripCircuitBreaker = defaultShouldFail[F](_, _)
   )(client: Client[F])(implicit F: Bracket[F, Throwable]): Client[F] = {
     Client[F]{req: Request[F] => 
       val cb = cbf(req)
@@ -45,8 +45,10 @@ object CircuitedClient {
         cb.protect(
           client.run(req).allocated.flatMap{
             case (resp, shutdown) => 
-              if (shouldFail(req, resp)) F.raiseError[(Response[F], F[Unit])](CircuitedClientThrowable(resp, shutdown))
-              else (resp, shutdown).pure[F]
+              shouldFail(req, resp) match {
+                case StrikeAgainstCircuitBreaker => F.raiseError[(Response[F], F[Unit])](CircuitedClientThrowable(resp, shutdown))
+                case NoStrikeAgainstCircuitBreaker => (resp, shutdown).pure[F]
+              }
           }
         ).handleErrorWith{
           // The F here is not checked.
@@ -58,9 +60,14 @@ object CircuitedClient {
     }
   }
 
-  def defaultShouldFail[F[_]](req: Request[F], resp: Response[F]): Boolean = {
+  sealed trait ShouldTripCircuitBreaker
+  case object StrikeAgainstCircuitBreaker extends ShouldTripCircuitBreaker
+  case object NoStrikeAgainstCircuitBreaker extends ShouldTripCircuitBreaker
+
+  def defaultShouldFail[F[_]](req: Request[F], resp: Response[F]): ShouldTripCircuitBreaker = {
     val _ = req
-    resp.status.responseClass == Status.ServerError
+    if (resp.status.responseClass == Status.ServerError) StrikeAgainstCircuitBreaker
+    else NoStrikeAgainstCircuitBreaker
   }
 
   private case class CircuitedClientThrowable[F[_]](resp: Response[F], shutdown: F[Unit]) 
