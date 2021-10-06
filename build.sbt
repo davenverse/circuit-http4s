@@ -63,5 +63,9 @@ lazy val commonSettings = Seq(
 
     "org.specs2"                  %% "specs2-core"                % specs2V       % Test,
     "org.specs2"                  %% "specs2-scalacheck"          % specs2V       % Test
-  )
+  ),
+  mimaVersionCheckExcludedVersions := {
+    if (scalaVersion.value.startsWith("2.13")) Set("0.2.0")
+    else Set()
+  }
 )
