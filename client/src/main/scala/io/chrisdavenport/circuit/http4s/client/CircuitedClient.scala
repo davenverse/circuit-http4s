@@ -1,34 +1,34 @@
 package io.chrisdavenport.circuit.http4s.client
 
+import io.chrisdavenport.mapref.MapRef
 import io.chrisdavenport.circuit.CircuitBreaker
 import cats.syntax.all._
 import cats.effect._
-import cats.effect.concurrent._
 import org.http4s._
 import org.http4s.client._
 import cats._
 import scala.concurrent.duration._
+
 object CircuitedClient {
 
-  def apply[F[_]: Bracket[*[_], Throwable]](cr: CircuitBreaker[F])(c: Client[F]): Client[F] = 
-    generic(Function.const[CircuitBreaker[F], Request[F]](cr))(c)
-
+  def apply[F[_]: Concurrent](cr: CircuitBreaker[Resource[F, *]])(c: Client[F]): Client[F] = 
+    generic(Function.const[CircuitBreaker[Resource[F, *]], Request[F]](cr))(c)
 
   def byKey[F[_]](
     maxFailures: Int,
     resetTimeout: FiniteDuration,
     exponentialBackoffFactor: Double = 1,
     maxResetTimeout: Duration = Duration.Inf,
-    modifications: CircuitBreaker[F] => CircuitBreaker[F] = {x: CircuitBreaker[F] => x},
+    modifications: CircuitBreaker[Resource[F, *]] => CircuitBreaker[Resource[F, *]] = {(x: CircuitBreaker[Resource[F, *]]) => x},
     shouldFail: (Request[F], Response[F]) => ShouldCircuitBreakerSeeAsFailure = defaultShouldFail[F](_, _)
-  )(client: Client[F])(implicit F: Sync[F], C: Clock[F]): F[Client[F]] = {
-    io.chrisdavenport.mapref.MapRef.ofSingleImmutableMap[F, RequestKey, CircuitBreaker.State](Map.empty[RequestKey, CircuitBreaker.State]).map{
+  )(client: Client[F])(implicit F: Async[F]): F[Client[F]] = {
+    MapRef.inSingleImmutableMap[F, Resource[F, *], RequestKey, CircuitBreaker.State](Map.empty[RequestKey, CircuitBreaker.State]).map{
       mapref => 
-        val f : Request[F] => CircuitBreaker[F] = {req: Request[F] => 
+        val f : Request[F] => CircuitBreaker[Resource[F, *]] = {(req: Request[F]) => 
           val key = RequestKey.fromRequest(req)
           val optRef = mapref(key)
-          val ref = new LiftedRefDefaultStorage(optRef, CircuitBreaker.Closed(0))
-          val cbInit = CircuitBreaker.unsafe(ref, maxFailures, resetTimeout, exponentialBackoffFactor, maxResetTimeout, F.unit, F.unit, F.unit, F.unit)
+          val ref = MapRef.defaultedRef(optRef, CircuitBreaker.Closed(0))
+          val cbInit = CircuitBreaker.unsafe(ref, maxFailures, resetTimeout, exponentialBackoffFactor, maxResetTimeout, Resource.eval(F.unit), Resource.eval(F.unit), Resource.eval(F.unit), Resource.eval(F.unit))
           modifications(cbInit)
         }
         generic(f, shouldFail)(client)
@@ -36,27 +36,22 @@ object CircuitedClient {
   }
 
   def generic[F[_], A](
-    cbf: Request[F] => CircuitBreaker[F],
+    cbf: Request[F] => CircuitBreaker[Resource[F, *]],
     shouldFail: (Request[F], Response[F]) => ShouldCircuitBreakerSeeAsFailure = defaultShouldFail[F](_, _)
-  )(client: Client[F])(implicit F: Bracket[F, Throwable]): Client[F] = {
-    Client[F]{req: Request[F] => 
-      val cb = cbf(req)
-      Resource(
-        cb.protect(
-          client.run(req).allocated.flatMap{
-            case (resp, shutdown) => 
-              shouldFail(req, resp) match {
-                case CountAsFailure => F.raiseError[(Response[F], F[Unit])](CircuitedClientThrowable(resp, shutdown))
-                case CountAsSuccess => (resp, shutdown).pure[F]
-              }
-          }
-        ).handleErrorWith{
-          // The F here is not checked.
-          case e: CircuitedClientThrowable[F] @unchecked => (e.resp, e.shutdown).pure[F]
-          case e => F.raiseError(e)
-        }
+  )(client: Client[F])(implicit F: Concurrent[F]): Client[F] = {
+    Client[F]{ (req: Request[F]) => 
+      val circuit = cbf(req)
+      val action = client.run(req).flatMap(resp => 
+        shouldFail(req, resp) match {
+          case CountAsFailure => Resource.eval(Concurrent[F].raiseError(CircuitedClientResourceThrowable(resp)))
+          case CountAsSuccess => Resource.pure[F, Response[F]](resp)
+        }  
       )
       
+      circuit.protect(action).handleErrorWith[Response[F], Throwable]{
+        case e: CircuitedClientResourceThrowable[F] @unchecked => Resource.pure[F, Response[F]](e.resp)
+        case e => Resource.eval(F.raiseError(e))
+      }
     }
   }
 
@@ -73,6 +68,10 @@ object CircuitedClient {
   private case class CircuitedClientThrowable[F[_]](resp: Response[F], shutdown: F[Unit]) 
     extends Throwable 
     with scala.util.control.NoStackTrace
+
+  private case class CircuitedClientResourceThrowable[F[_]](resp: Response[F]) 
+    extends Throwable 
+    with scala.util.control.NoStackTrace
   
   implicit private val eqState: Eq[CircuitBreaker.State] = Eq.instance{
     case (CircuitBreaker.HalfOpen, CircuitBreaker.HalfOpen) => true
@@ -82,58 +81,5 @@ object CircuitedClient {
         reset1 === reset2
     case (_, _) => false
   }
-
-
-  /**
-   * Operates with default and anytime default is present instead information is removed from underlying ref.
-   **/
-  private class LiftedRefDefaultStorage[F[_]: Functor, A: Eq](
-    val ref: Ref[F, Option[A]],
-    val default: A
-  ) extends Ref[F, A]{
-    def get: F[A] = ref.get.map(_.getOrElse(default))
-    
-    def set(a: A): F[Unit] = {
-      if (a =!= default) ref.set(a.some)
-      else ref.set(None)
-    }
-    
-    def access: F[(A, A => F[Boolean])] = ref.access.map{
-      case (opt, cb) => 
-        (opt.getOrElse(default), {(s: A) => 
-          if (s =!= default) cb(s.some)
-          else cb(None)
-        })
-    }
-    
-    def tryUpdate(f: A => A): F[Boolean] = 
-      tryModify{(s: A) => (f(s), ())}.map(_.isDefined)
-    
-    def tryModify[B](f: A => (A, B)): F[Option[B]] =
-      ref.tryModify{opt => 
-        val s = opt.getOrElse(default)
-        val (after, out) = f(s)
-        if (after =!= default) (after.some, out)
-        else (None, out)
-      }
-    
-    def update(f: A => A): F[Unit] = 
-      modify((s: A) => (f(s), ()))
-    
-    def modify[B](f: A => (A, B)): F[B] = 
-      ref.modify{opt => 
-        val a = opt.getOrElse(default)
-        val (out, b) = f(a)
-        if (out =!= default) (out.some, b)
-        else (None, b)
-      }
-    
-    def tryModifyState[B](state: cats.data.State[A,B]): F[Option[B]] = 
-      tryModify{s => state.run(s).value}
-    
-    def modifyState[B](state: cats.data.State[A,B]): F[B] = 
-      modify{s => state.run(s).value}
-  }
-
 
 }

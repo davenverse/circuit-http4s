@@ -3,18 +3,19 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 
 val catsV = "2.6.1"
-val catsEffectV = "2.5.4"
-val fs2V = "2.5.9"
+val catsEffectV = "3.2.9"
+val fs2V = "3.1.3"
 
-val circuitV = "0.4.4"
-val http4sV = "0.22.5"
-val mapRefV = "0.1.1"
+val circuitV = "0.5.0-M2"
+val http4sV = "0.23.4"
+val mapRefV = "0.2.1"
 
-val specs2V = "4.8.3"
+val specs2V = "4.12.12"
 
 val scala213 = "2.13.6" 
 
-ThisBuild / crossScalaVersions := Seq("2.12.14", scala213)
+ThisBuild / crossScalaVersions := Seq("2.12.14", scala213, "3.0.2")
+ThisBuild / testFrameworks += new TestFramework("munit.Framework")
 
 lazy val `circuit-http4s` = project.in(file("."))
   .disablePlugins(MimaPlugin)
@@ -61,11 +62,8 @@ lazy val commonSettings = Seq(
 
     "org.http4s" %% "http4s-dsl" % http4sV % Test,
 
-    "org.specs2"                  %% "specs2-core"                % specs2V       % Test,
-    "org.specs2"                  %% "specs2-scalacheck"          % specs2V       % Test
-  ),
-  mimaVersionCheckExcludedVersions := {
-    if (scalaVersion.value.startsWith("2.13")) Set("0.2.0")
-    else Set()
-  }
+    "org.typelevel" %% "munit-cats-effect-3" % "1.0.6" %  Test,
+
+    // "org.specs2"                  %% "specs2-core"                % specs2V       % Test,
+  )
 )
