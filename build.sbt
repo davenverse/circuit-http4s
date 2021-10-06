@@ -8,7 +8,7 @@ val fs2V = "2.5.9"
 
 val circuitV = "0.4.4"
 val http4sV = "0.22.5"
-val mapRefV = "0.1.1"
+val mapRefV = "0.2.0"
 
 val specs2V = "4.8.3"
 
