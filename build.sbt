@@ -8,6 +8,7 @@ val fs2V = "2.5.9"
 
 val circuitV = "0.4.4"
 val http4sV = "0.21.29"
+val mapRefV = "0.1.1"
 
 val specs2V = "4.8.3"
 
@@ -56,6 +57,9 @@ lazy val commonSettings = Seq(
     "org.typelevel"               %% "cats-effect"                % catsEffectV,
     "co.fs2"                      %% "fs2-io"                     % fs2V,
     "io.chrisdavenport"           %% "circuit"                    % circuitV,
+    "io.chrisdavenport"           %% "mapref"                     % mapRefV,
+
+    "org.http4s" %% "http4s-dsl" % http4sV % Test,
 
     "org.specs2"                  %% "specs2-core"                % specs2V       % Test,
     "org.specs2"                  %% "specs2-scalacheck"          % specs2V       % Test
