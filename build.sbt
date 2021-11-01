@@ -12,7 +12,7 @@ val mapRefV = "0.2.1"
 
 val specs2V = "4.12.12"
 
-val scala213 = "2.13.6" 
+val scala213 = "2.13.7" 
 
 ThisBuild / crossScalaVersions := Seq("2.12.14", scala213, "3.0.2")
 ThisBuild / testFrameworks += new TestFramework("munit.Framework")
