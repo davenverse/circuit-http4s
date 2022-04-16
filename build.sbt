@@ -3,7 +3,7 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 
 val catsV = "2.6.1"
-val catsEffectV = "3.2.9"
+val catsEffectV = "3.3.11"
 val fs2V = "3.1.6"
 
 val circuitV = "0.5.0-M2"
@@ -14,7 +14,7 @@ val specs2V = "4.12.12"
 
 val scala213 = "2.13.6" 
 
-ThisBuild / crossScalaVersions := Seq("2.12.14", scala213, "3.0.2")
+ThisBuild / crossScalaVersions := Seq("2.12.14", scala213, "3.1.2")
 ThisBuild / testFrameworks += new TestFramework("munit.Framework")
 
 lazy val `circuit-http4s` = project.in(file("."))
