@@ -14,7 +14,7 @@ val specs2V = "4.12.12"
 
 val scala213 = "2.13.6" 
 
-ThisBuild / crossScalaVersions := Seq("2.12.14", scala213, "3.0.2")
+ThisBuild / crossScalaVersions := Seq("2.12.14", scala213, "3.1.2")
 ThisBuild / testFrameworks += new TestFramework("munit.Framework")
 
 lazy val `circuit-http4s` = project.in(file("."))
