@@ -28,7 +28,7 @@ class CircuitedClientSpec extends CatsEffectSuite {
     } yield e
 
     test.map{
-      case Left(_: CircuitBreaker.RejectedExecution) => assert(true)
+      case Left(_: CircuitedClient.RejectedExecutionHttp4sClient) => assert(true)
       case _ => assert(false)
     }
   }
@@ -43,14 +43,14 @@ class CircuitedClientSpec extends CatsEffectSuite {
 
     val test = for {
 
-      newClient <- CircuitedClient.byRequestKey(0, 20.seconds)(iClient)
+      newClient <- CircuitedClient.byRequestKey[IO](0, 20.seconds)(iClient)
       req = Request[IO](Method.GET, uri"http://www.mycoolsite.com/fail")
       _ <- newClient.expect[String](req).attempt
       e <- newClient.expect[String](req).attempt
     } yield e
 
     test.map{
-      case Left(_: CircuitBreaker.RejectedExecution) => assert(true)
+      case Left(_: CircuitedClient.RejectedExecutionHttp4sClient) => assert(true)
       case _ => assert(false)
     }
   }
@@ -65,7 +65,7 @@ class CircuitedClientSpec extends CatsEffectSuite {
 
     val test = for {
 
-      newClient <- CircuitedClient.byRequestKey(0, 20.seconds)(iClient)
+      newClient <- CircuitedClient.byRequestKey[IO](0, 20.seconds)(iClient)
       req = Request[IO](Method.GET, uri"http://www.mycoolsite.com/fail")
       _ <- newClient.expect[String](req).attempt
       e <- newClient.expect[String](Request[IO](Method.GET, uri"http://www.adifferentsite.com/success")).attempt
