@@ -12,9 +12,18 @@ import io.chrisdavenport.circuit.CircuitBreaker.RejectedExecution
 
 object CircuitedClient {
 
-  def apply[F[_]: Concurrent](cr: CircuitBreaker[Resource[F, *]])(c: Client[F]): Client[F] = 
-    generic(Function.const[CircuitBreaker[Resource[F, *]], Request[F]](cr))(c)
-
+  /** Configure and Create a Client which CircuitBreaks on RequestKeys consistently failing.
+    * A solid in-memory default. A safe baseline might be maxFailures = 50, and resetTimeout = 1.second but
+    * is highly influenced by your load and failure tolerance.
+    * 
+    * @param maxFailures The number of consecutive failures required to trip the circuit breaker.
+    * @param resetTimeout The period of time to open on an initial switch from Closed to Open
+    * @param backoff The algorithm to determine how long to stay open after each failure. Default is exponential, doubling the period.
+    * @param maxResetTimeout The maximum open period before retrying. The prevent increasing timeouts ever increasing too greatly. The default is 1 minute.
+    * @param modifications The modifications to the created circuit breaker. This is useful for adding your own triggers, and metrics on circuit changes.
+    * @param translatedError This function allows you to translate the Request, Circuit RejectedExecution, and RequestKey and build a Throwable of your own. Default is to build a RejectedExecutionHttp4sClient.
+    * @param shouldFail This function allows you to determine what counts as a failure when a Response is succesfully retrieved. Default is to see any 5xx Response as a failure.
+    **/
   def byRequestKey[F[_]](
     maxFailures: Int,
     resetTimeout: FiniteDuration,
@@ -30,6 +39,21 @@ object CircuitedClient {
     }
   }
 
+  /** Configure and Create a Client which CircuitBreaks on a generic key consistently failing.
+    * 
+    A safe baseline might be maxFailures = 50, and resetTimeout = 1.second but
+    * is highly influenced by your load and failure tolerance.
+    * 
+    * @param mapRef The storage mechanism for the CircuitBreaker State, can be either in memory or remote.
+    * @param keyFunction The classification mechanism sorting requests into unqiquely keyed circuit breakers.
+    * @param maxFailures The number of consecutive failures required to trip the circuit breaker.
+    * @param resetTimeout The period of time to open on an initial switch from Closed to Open
+    * @param backoff The algorithm to determine how long to stay open after each failure. Default is exponential, doubling the period.
+    * @param maxResetTimeout The maximum open period before retrying. The prevent increasing timeouts ever increasing too greatly. The default is 1 minute.
+    * @param modifications The modifications to the created circuit breaker. This is useful for adding your own triggers, and metrics on circuit changes.
+    * @param translatedError This function allows you to translate the Request, Circuit RejectedExecution, and RequestKey and build a Throwable of your own. Default is to build a RejectedExecutionHttp4sClient.
+    * @param shouldFail This function allows you to determine what counts as a failure when a Response is succesfully retrieved. Default is to see any 5xx Response as a failure.
+    **/
   def byMapRefAndKeyed[F[_], K](
     mapRef: MapRef[F, K, Option[CircuitBreaker.State]],
     keyFunction: Request[F] => K,
@@ -54,6 +78,12 @@ object CircuitedClient {
     generic(f, shouldFail, newTranslate)(client)
   }
 
+  /** Generic CircuitedClient
+    * 
+    * @param cbf How to generate a CircuitBreaker from a Request
+    * @param translatedError This function allows you to translate the Request, Circuit RejectedExecution, and RequestKey and build a Throwable of your own. Default is to build a RejectedExecutionHttp4sClient.
+    * @param shouldFail This function allows you to determine what counts as a failure when a Response is succesfully retrieved. Default is to see any 5xx Response as a failure.
+    */ 
   def generic[F[_], A](
     cbf: Request[F] => CircuitBreaker[Resource[F, *]],
     shouldFail: (Request[F], Response[F]) => ShouldCircuitBreakerSeeAsFailure = defaultShouldFail[F](_, _),
@@ -95,7 +125,6 @@ object CircuitedClient {
     override final val getMessage = s"Execution Rejection: $prelude, ${rejectedExecution.reason}"
     override final def getCause = rejectedExecution
   }
-
 
   def defaultTranslatedError[F[_], K](request: Request[F], re: RejectedExecution, k: K): Option[Throwable] = {
     val _ = k
