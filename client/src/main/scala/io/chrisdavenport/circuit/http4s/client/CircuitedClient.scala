@@ -8,6 +8,7 @@ import org.http4s._
 import org.http4s.client._
 import cats._
 import scala.concurrent.duration._
+import io.chrisdavenport.circuit.CircuitBreaker.RejectedExecution
 
 object CircuitedClient {
 
@@ -20,11 +21,12 @@ object CircuitedClient {
     backoff: FiniteDuration => FiniteDuration = io.chrisdavenport.circuit.Backoff.exponential,
     maxResetTimeout: Duration = 1.minute,
     modifications: CircuitBreaker[Resource[F, *]] => CircuitBreaker[Resource[F, *]] = {(x: CircuitBreaker[Resource[F, *]]) => x},
+    translatedError: (Request[F], RejectedExecution, RequestKey) => Option[Throwable] = defaultTranslatedError[F, RequestKey](_, _, _),
     shouldFail: (Request[F], Response[F]) => ShouldCircuitBreakerSeeAsFailure = defaultShouldFail[F](_, _)
-  )(client: Client[F])(implicit F: Async[F]): F[Client[F]] = {
-    MapRef.inSingleImmutableMap[F, F, RequestKey, CircuitBreaker.State](Map.empty[RequestKey, CircuitBreaker.State]).map{
+  )(client: Client[F])(implicit F: Temporal[F]): F[Client[F]] = {
+    MapRef.ofSingleImmutableMap[F, RequestKey, CircuitBreaker.State](Map.empty[RequestKey, CircuitBreaker.State]).map{
       mapref => 
-        byMapRefAndKeyed[F, RequestKey](mapref, RequestKey.fromRequest(_), maxFailures, resetTimeout, backoff, maxResetTimeout, modifications, shouldFail)(client)
+        byMapRefAndKeyed[F, RequestKey](mapref, RequestKey.fromRequest(_), maxFailures, resetTimeout, backoff, maxResetTimeout, modifications, translatedError, shouldFail)(client)
     }
   }
 
@@ -36,20 +38,26 @@ object CircuitedClient {
     backoff: FiniteDuration => FiniteDuration = io.chrisdavenport.circuit.Backoff.exponential,
     maxResetTimeout: Duration = 1.minute,
     modifications: CircuitBreaker[Resource[F, *]] => CircuitBreaker[Resource[F, *]] = {(x: CircuitBreaker[Resource[F, *]]) => x},
+    translatedError: (Request[F], RejectedExecution, K) => Option[Throwable] = defaultTranslatedError[F, K](_, _, _),
     shouldFail: (Request[F], Response[F]) => ShouldCircuitBreakerSeeAsFailure = defaultShouldFail[F](_, _)
-  )(client: Client[F])(implicit F: Async[F]): Client[F] = {
+  )(client: Client[F])(implicit F: Temporal[F]): Client[F] = {
+    def newTranslate(req: Request[F], re: RejectedExecution): Option[Throwable] = {
+      val k = keyFunction(req)
+      translatedError(req, re, k)
+    }
     val f : Request[F] => CircuitBreaker[Resource[F, *]] = {(req: Request[F]) => 
       val optRef = mapRef(keyFunction(req))
       val ref = MapRef.defaultedRef(optRef, CircuitBreaker.Closed(0)).mapK(Resource.liftK)
       val cbInit = CircuitBreaker.unsafe(ref, maxFailures, resetTimeout, backoff, maxResetTimeout, Resource.eval(F.unit), Resource.eval(F.unit), Resource.eval(F.unit), Resource.eval(F.unit))
       modifications(cbInit)
     }
-    generic(f, shouldFail)(client)
+    generic(f, shouldFail, newTranslate)(client)
   }
 
   def generic[F[_], A](
     cbf: Request[F] => CircuitBreaker[Resource[F, *]],
-    shouldFail: (Request[F], Response[F]) => ShouldCircuitBreakerSeeAsFailure = defaultShouldFail[F](_, _)
+    shouldFail: (Request[F], Response[F]) => ShouldCircuitBreakerSeeAsFailure = defaultShouldFail[F](_, _),
+    translatedError: (Request[F], RejectedExecution) => Option[Throwable] = defaultTranslatedErrorSimple[F](_, _)
   )(client: Client[F])(implicit F: Concurrent[F]): Client[F] = {
     Client[F]{ (req: Request[F]) => 
       val circuit = cbf(req)
@@ -62,6 +70,9 @@ object CircuitedClient {
       
       circuit.protect(action).handleErrorWith[Response[F], Throwable]{
         case e: CircuitedClientResourceThrowable[F] @unchecked => Resource.pure[F, Response[F]](e.resp)
+        case re: RejectedExecution => 
+          val e = translatedError(req, re).getOrElse(re)
+          Resource.eval(F.raiseError(e))
         case e => Resource.eval(F.raiseError(e))
       }
     }
@@ -77,9 +88,23 @@ object CircuitedClient {
     else CountAsSuccess
   }
 
-  private case class CircuitedClientThrowable[F[_]](resp: Response[F], shutdown: F[Unit]) 
-    extends Throwable 
-    with scala.util.control.NoStackTrace
+  sealed abstract case class RejectedExecutionHttp4sClient private[CircuitedClient](
+    prelude: RequestPrelude,
+    rejectedExecution: RejectedExecution
+  ) extends RuntimeException{
+    override final val getMessage = s"Execution Rejection: $prelude, ${rejectedExecution.reason}"
+    override final def getCause = rejectedExecution
+  }
+
+
+  def defaultTranslatedError[F[_], K](request: Request[F], re: RejectedExecution, k: K): Option[Throwable] = {
+    val _ = k
+    defaultTranslatedErrorSimple(request, re)
+  }
+
+  def defaultTranslatedErrorSimple[F[_]](request: Request[F], re: RejectedExecution): Option[Throwable] = {
+    new RejectedExecutionHttp4sClient(request.requestPrelude, re){}.some
+  }
 
   private case class CircuitedClientResourceThrowable[F[_]](resp: Response[F]) 
     extends Throwable 
