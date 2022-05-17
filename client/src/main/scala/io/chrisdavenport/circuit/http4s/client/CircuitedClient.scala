@@ -84,7 +84,7 @@ object CircuitedClient {
     * @param translatedError This function allows you to translate the Request, Circuit RejectedExecution, and RequestKey and build a Throwable of your own. Default is to build a RejectedExecutionHttp4sClient.
     * @param shouldFail This function allows you to determine what counts as a failure when a Response is succesfully retrieved. Default is to see any 5xx Response as a failure.
     */ 
-  def generic[F[_], A](
+  def generic[F[_]](
     cbf: Request[F] => CircuitBreaker[Resource[F, *]],
     shouldFail: (Request[F], Response[F]) => ShouldCircuitBreakerSeeAsFailure = defaultShouldFail[F](_, _),
     translatedError: (Request[F], RejectedExecution) => Option[Throwable] = defaultTranslatedErrorSimple[F](_, _)

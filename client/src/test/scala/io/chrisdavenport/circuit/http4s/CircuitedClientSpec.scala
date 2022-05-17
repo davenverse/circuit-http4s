@@ -22,7 +22,7 @@ class CircuitedClientSpec extends CatsEffectSuite {
 
     val test = for {
       circuit <- CircuitBreaker.in[IO, Resource[IO, *]](0, 20.seconds)
-      newClient = CircuitedClient(circuit)(iClient)
+      newClient = CircuitedClient.generic[IO](Function.const(circuit))(iClient)
       _ <- newClient.expect[String](Request[IO](Method.GET)).attempt
       e <- newClient.expect[String](Request[IO](Method.GET)).attempt
     } yield e
