@@ -14,25 +14,37 @@ object CircuitedClient {
   def apply[F[_]: Concurrent](cr: CircuitBreaker[Resource[F, *]])(c: Client[F]): Client[F] = 
     generic(Function.const[CircuitBreaker[Resource[F, *]], Request[F]](cr))(c)
 
-  def byKey[F[_]](
+  def byRequestKey[F[_]](
     maxFailures: Int,
     resetTimeout: FiniteDuration,
-    exponentialBackoffFactor: Double = 1,
-    maxResetTimeout: Duration = Duration.Inf,
+    backoff: FiniteDuration => FiniteDuration = io.chrisdavenport.circuit.Backoff.exponential,
+    maxResetTimeout: Duration = 1.minute,
     modifications: CircuitBreaker[Resource[F, *]] => CircuitBreaker[Resource[F, *]] = {(x: CircuitBreaker[Resource[F, *]]) => x},
     shouldFail: (Request[F], Response[F]) => ShouldCircuitBreakerSeeAsFailure = defaultShouldFail[F](_, _)
   )(client: Client[F])(implicit F: Async[F]): F[Client[F]] = {
-    MapRef.inSingleImmutableMap[F, Resource[F, *], RequestKey, CircuitBreaker.State](Map.empty[RequestKey, CircuitBreaker.State]).map{
+    MapRef.inSingleImmutableMap[F, F, RequestKey, CircuitBreaker.State](Map.empty[RequestKey, CircuitBreaker.State]).map{
       mapref => 
-        val f : Request[F] => CircuitBreaker[Resource[F, *]] = {(req: Request[F]) => 
-          val key = RequestKey.fromRequest(req)
-          val optRef = mapref(key)
-          val ref = MapRef.defaultedRef(optRef, CircuitBreaker.Closed(0))
-          val cbInit = CircuitBreaker.unsafe(ref, maxFailures, resetTimeout, exponentialBackoffFactor, maxResetTimeout, Resource.eval(F.unit), Resource.eval(F.unit), Resource.eval(F.unit), Resource.eval(F.unit))
-          modifications(cbInit)
-        }
-        generic(f, shouldFail)(client)
+        byMapRefAndKeyed[F, RequestKey](mapref, RequestKey.fromRequest(_), maxFailures, resetTimeout, backoff, maxResetTimeout, modifications, shouldFail)(client)
     }
+  }
+
+  def byMapRefAndKeyed[F[_], K](
+    mapRef: MapRef[F, K, Option[CircuitBreaker.State]],
+    keyFunction: Request[F] => K,
+    maxFailures: Int,
+    resetTimeout: FiniteDuration,
+    backoff: FiniteDuration => FiniteDuration = io.chrisdavenport.circuit.Backoff.exponential,
+    maxResetTimeout: Duration = 1.minute,
+    modifications: CircuitBreaker[Resource[F, *]] => CircuitBreaker[Resource[F, *]] = {(x: CircuitBreaker[Resource[F, *]]) => x},
+    shouldFail: (Request[F], Response[F]) => ShouldCircuitBreakerSeeAsFailure = defaultShouldFail[F](_, _)
+  )(client: Client[F])(implicit F: Async[F]): Client[F] = {
+    val f : Request[F] => CircuitBreaker[Resource[F, *]] = {(req: Request[F]) => 
+      val optRef = mapRef(keyFunction(req))
+      val ref = MapRef.defaultedRef(optRef, CircuitBreaker.Closed(0)).mapK(Resource.liftK)
+      val cbInit = CircuitBreaker.unsafe(ref, maxFailures, resetTimeout, backoff, maxResetTimeout, Resource.eval(F.unit), Resource.eval(F.unit), Resource.eval(F.unit), Resource.eval(F.unit))
+      modifications(cbInit)
+    }
+    generic(f, shouldFail)(client)
   }
 
   def generic[F[_], A](

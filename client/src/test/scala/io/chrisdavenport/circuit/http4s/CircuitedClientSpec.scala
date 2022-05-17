@@ -43,7 +43,7 @@ class CircuitedClientSpec extends CatsEffectSuite {
 
     val test = for {
 
-      newClient <- CircuitedClient.byKey(0, 20.seconds)(iClient)
+      newClient <- CircuitedClient.byRequestKey(0, 20.seconds)(iClient)
       req = Request[IO](Method.GET, uri"http://www.mycoolsite.com/fail")
       _ <- newClient.expect[String](req).attempt
       e <- newClient.expect[String](req).attempt
@@ -65,7 +65,7 @@ class CircuitedClientSpec extends CatsEffectSuite {
 
     val test = for {
 
-      newClient <- CircuitedClient.byKey(0, 20.seconds)(iClient)
+      newClient <- CircuitedClient.byRequestKey(0, 20.seconds)(iClient)
       req = Request[IO](Method.GET, uri"http://www.mycoolsite.com/fail")
       _ <- newClient.expect[String](req).attempt
       e <- newClient.expect[String](Request[IO](Method.GET, uri"http://www.adifferentsite.com/success")).attempt
