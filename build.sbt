@@ -19,7 +19,7 @@ val catsEffectV = "3.4.8"
 val fs2V = "3.6.1"
 
 val circuitV = "0.5.1"
-val http4sV = "0.23.19"
+val http4sV = "0.23.18"
 
 val scala213 = "2.13.8"
 
