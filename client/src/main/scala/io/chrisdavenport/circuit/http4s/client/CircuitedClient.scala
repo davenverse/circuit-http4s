@@ -1,6 +1,6 @@
 package io.chrisdavenport.circuit.http4s.client
 
-import io.chrisdavenport.mapref.MapRef
+import cats.effect.std.MapRef
 import io.chrisdavenport.circuit.CircuitBreaker
 import cats.syntax.all._
 import cats.effect._

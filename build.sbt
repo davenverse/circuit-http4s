@@ -1,4 +1,4 @@
-ThisBuild / tlBaseVersion := "0.4" // your current series x.y
+ThisBuild / tlBaseVersion := "0.5" // your current series x.y
 
 ThisBuild / organization := "io.chrisdavenport"
 ThisBuild / organizationName := "Christopher Davenport"
@@ -24,12 +24,15 @@ val http4sV = "0.23.18"
 val scala213 = "2.13.8"
 
 ThisBuild / crossScalaVersions := Seq("2.12.15", scala213, "3.2.2")
+ThisBuild / scalaVersion := scala213
+
 ThisBuild / testFrameworks += new TestFramework("munit.Framework")
 
 lazy val `circuit-http4s` = tlCrossRootProject
   .aggregate(server, client)
 
 lazy val server = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+  .crossType(CrossType.Pure)
   .in(file("server"))
   .settings(commonSettings)
   .settings(
@@ -42,6 +45,7 @@ lazy val server = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
 
 lazy val client = crossProject(JVMPlatform, JSPlatform, NativePlatform)
+  .crossType(CrossType.Pure)
   .in(file("client"))
   .settings(commonSettings)
   .settings(
