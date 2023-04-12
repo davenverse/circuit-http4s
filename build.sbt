@@ -21,7 +21,7 @@ val fs2V = "3.6.1"
 val circuitV = "0.5.1"
 val http4sV = "0.23.18"
 
-val scala213 = "2.13.8"
+val scala213 = "2.13.10"
 
 ThisBuild / crossScalaVersions := Seq("2.12.15", scala213, "3.2.2")
 ThisBuild / scalaVersion := scala213
