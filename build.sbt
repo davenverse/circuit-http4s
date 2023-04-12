@@ -23,7 +23,7 @@ val http4sV = "0.23.18"
 
 val scala213 = "2.13.8"
 
-ThisBuild / crossScalaVersions := Seq("2.12.15", scala213, "3.2.2")
+ThisBuild / crossScalaVersions := Seq("2.12.17", scala213, "3.2.2")
 ThisBuild / scalaVersion := scala213
 
 ThisBuild / testFrameworks += new TestFramework("munit.Framework")
