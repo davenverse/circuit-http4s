@@ -90,11 +90,11 @@ jobs:
 
       - name: Make target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
-        run: mkdir -p target client/native/target server/native/target .js/target site/target client/js/target client/jvm/target .jvm/target .native/target server/jvm/target server/js/target project/target
+        run: mkdir -p target client/.native/target server/.native/target .js/target site/target client/.js/target client/.jvm/target .jvm/target .native/target server/.jvm/target server/.js/target project/target
 
       - name: Compress target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
-        run: tar cf targets.tar target client/native/target server/native/target .js/target site/target client/js/target client/jvm/target .jvm/target .native/target server/jvm/target server/js/target project/target
+        run: tar cf targets.tar target client/.native/target server/.native/target .js/target site/target client/.js/target client/.jvm/target .jvm/target .native/target server/.jvm/target server/.js/target project/target
 
       - name: Upload target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
@@ -110,7 +110,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [3.2.2]
+        scala: [2.13.8]
         java: [temurin@8]
     runs-on: ${{ matrix.os }}
     steps:
@@ -256,7 +256,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [3.2.2]
+        scala: [2.13.8]
         java: [temurin@8]
     runs-on: ${{ matrix.os }}
     steps:
