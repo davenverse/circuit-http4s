@@ -27,7 +27,7 @@ ThisBuild / crossScalaVersions := Seq("2.12.15", scala213, "3.2.2")
 ThisBuild / testFrameworks += new TestFramework("munit.Framework")
 
 lazy val `circuit-http4s` = tlCrossRootProject
-  .aggregate(server, client, site)
+  .aggregate(server, client)
 
 lazy val server = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("server"))
