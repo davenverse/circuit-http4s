@@ -1,8 +1,3 @@
----
-layout: home
-
----
-
 # circuit-http4s - CircuitBreaker backed Http4s Middlewares [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.chrisdavenport/circuit-http4s_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.chrisdavenport/circuit-http4s_2.12)
 
 ## Quick Start
