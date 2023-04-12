@@ -37,7 +37,7 @@ lazy val server = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-core" % http4sV % Test
     )
-  ).platformSettings(JSPlatform, NativePlatform)(
+  ).platformsSettings(JSPlatform, NativePlatform)(
     tlVersionIntroduced := List("2.12", "2.13", "3").map(_ -> "0.4.1").toMap
   )
 
@@ -49,7 +49,7 @@ lazy val client = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-client" % http4sV
     )
-  ).platformSettings(JSPlatform, NativePlatform)(
+  ).platformsSettings(JSPlatform, NativePlatform)(
     tlVersionIntroduced := List("2.12", "2.13", "3").map(_ -> "0.4.1").toMap
   )
 
