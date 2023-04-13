@@ -9,6 +9,7 @@ import org.http4s.client._
 import cats._
 import scala.concurrent.duration._
 import io.chrisdavenport.circuit.CircuitBreaker.RejectedExecution
+import java.util.concurrent.ConcurrentHashMap
 
 object CircuitedClient {
 
@@ -105,6 +106,23 @@ object CircuitedClient {
           Resource.eval(F.raiseError(e))
         case e => Resource.eval(F.raiseError(e))
       }
+    }
+  }
+
+  object Global {
+    private val state = new ConcurrentHashMap[RequestKey, CircuitBreaker.State]()
+
+    def byRequestKey[F[_]](
+      maxFailures: Int,
+      resetTimeout: FiniteDuration,
+      backoff: FiniteDuration => FiniteDuration = io.chrisdavenport.circuit.Backoff.exponential,
+      maxResetTimeout: Duration = 1.minute,
+      modifications: CircuitBreaker[Resource[F, *]] => CircuitBreaker[Resource[F, *]] = {(x: CircuitBreaker[Resource[F, *]]) => x},
+      translatedError: (Request[F], RejectedExecution, RequestKey) => Option[Throwable] = defaultTranslatedError[F, RequestKey](_, _, _),
+      shouldFail: (Request[F], Response[F]) => ShouldCircuitBreakerSeeAsFailure = defaultShouldFail[F](_, _)
+    )(client: Client[F])(implicit F: Temporal[F]): Client[F] = {
+      val mapref = MapRef.fromConcurrentHashMap[F, RequestKey, CircuitBreaker.State](state)
+      byMapRefAndKeyed[F, RequestKey](mapref, RequestKey.fromRequest(_), maxFailures, resetTimeout, backoff, maxResetTimeout, modifications, translatedError, shouldFail)(client)
     }
   }
 
