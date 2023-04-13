@@ -21,10 +21,8 @@ val fs2V = "3.6.1"
 val circuitV = "0.5.1"
 val http4sV = "0.23.18"
 
-val scala213 = "2.13.8"
-
-ThisBuild / crossScalaVersions := Seq("2.12.15", scala213, "3.2.2")
-ThisBuild / scalaVersion := scala213
+ThisBuild / crossScalaVersions := Seq("2.12.17", "2.13.10", "3.2.2")
+ThisBuild / scalaVersion := "3.2.2"
 
 ThisBuild / testFrameworks += new TestFramework("munit.Framework")
 
@@ -38,7 +36,7 @@ lazy val server = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .settings(
     name := "circuit-http4s-server",
     libraryDependencies ++= Seq(
-      "org.http4s" %% "http4s-core" % http4sV % Test
+      "org.http4s" %%% "http4s-core" % http4sV % Test
     )
   ).platformsSettings(JSPlatform, NativePlatform)(
     tlVersionIntroduced := List("2.12", "2.13", "3").map(_ -> "0.4.1").toMap
@@ -51,7 +49,7 @@ lazy val client = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .settings(
     name := "circuit-http4s-client",
     libraryDependencies ++= Seq(
-      "org.http4s" %% "http4s-client" % http4sV
+      "org.http4s" %%% "http4s-client" % http4sV
     )
   ).platformsSettings(JSPlatform, NativePlatform)(
     tlVersionIntroduced := List("2.12", "2.13", "3").map(_ -> "0.4.1").toMap
@@ -64,15 +62,13 @@ lazy val site = project.in(file("site"))
 // General Settings
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
-    "org.typelevel"               %% "cats-core"                  % catsV,
-    "org.typelevel"               %% "cats-effect"                % catsEffectV,
-    "co.fs2"                      %% "fs2-io"                     % fs2V,
-    "io.chrisdavenport"           %% "circuit"                    % circuitV,
+    "org.typelevel"               %%% "cats-core"                  % catsV,
+    "org.typelevel"               %%% "cats-effect"                % catsEffectV,
+    "co.fs2"                      %%% "fs2-io"                     % fs2V,
+    "io.chrisdavenport"           %%% "circuit"                    % circuitV,
 
-    "org.http4s" %% "http4s-dsl" % http4sV % Test,
+    "org.http4s" %%% "http4s-dsl" % http4sV % Test,
 
-    "org.typelevel" %% "munit-cats-effect" % "2.0.0-M3" %  Test,
-
-    // "org.specs2"                  %% "specs2-core"                % specs2V       % Test,
+    "org.typelevel" %%% "munit-cats-effect" % "2.0.0-M3" %  Test,
   )
 )
