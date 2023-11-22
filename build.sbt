@@ -69,6 +69,6 @@ lazy val commonSettings = Seq(
 
     "org.http4s" %%% "http4s-dsl" % http4sV % Test,
 
-    "org.typelevel" %%% "munit-cats-effect" % "2.0.0-M3" %  Test,
+    "org.typelevel" %%% "munit-cats-effect" % "2.0.0-M4" %  Test,
   )
 )
