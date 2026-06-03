@@ -127,7 +127,7 @@ object CircuitedClient {
   sealed abstract case class RejectedExecutionHttp4sClient private[CircuitedClient](
     prelude: RequestPrelude,
     rejectedExecution: RejectedExecution
-  ) extends RuntimeException{
+  ) extends RuntimeException with scala.util.control.NoStackTrace {
     override final val getMessage = s"Execution Rejection: $prelude, ${rejectedExecution.reason}"
     override final def getCause = rejectedExecution
   }
