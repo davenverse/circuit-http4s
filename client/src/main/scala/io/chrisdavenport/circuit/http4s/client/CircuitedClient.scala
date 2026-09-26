@@ -98,12 +98,18 @@ object CircuitedClient {
         }  
       )
       
-      circuit.protect(action).handleErrorWith[Response[F], Throwable]{
-        case e: CircuitedClientResourceThrowable[F] @unchecked => Resource.pure[F, Response[F]](e.resp)
-        case re: RejectedExecution => 
-          val e = translatedError(req, re).getOrElse(re)
-          Resource.eval(F.raiseError(e))
-        case e => Resource.eval(F.raiseError(e))
+      // Annotated rather than given explicit type arguments: Resource
+      // gained an ApplicativeError overload of handleErrorWith, and the
+      // two-type-argument form now selects it and asks for its second
+      // parameter list.
+      circuit.protect(action).handleErrorWith[Response[F]]{ (t: Throwable) =>
+        t match {
+          case e: CircuitedClientResourceThrowable[F] @unchecked => Resource.pure[F, Response[F]](e.resp)
+          case re: RejectedExecution =>
+            val e = translatedError(req, re).getOrElse(re)
+            Resource.eval(F.raiseError(e))
+          case e => Resource.eval(F.raiseError(e))
+        }
       }
     }
   }
@@ -121,7 +127,7 @@ object CircuitedClient {
   sealed abstract case class RejectedExecutionHttp4sClient private[CircuitedClient](
     prelude: RequestPrelude,
     rejectedExecution: RejectedExecution
-  ) extends RuntimeException{
+  ) extends RuntimeException with scala.util.control.NoStackTrace {
     override final val getMessage = s"Execution Rejection: $prelude, ${rejectedExecution.reason}"
     override final def getCause = rejectedExecution
   }
