@@ -10,14 +10,14 @@ ThisBuild / developers := List(
 
 ThisBuild / tlCiReleaseBranches := Seq()
 
-val catsV = "2.9.0"
-val catsEffectV = "3.4.8"
-val fs2V = "3.6.1"
+val catsV = "2.13.0"
+val catsEffectV = "3.7.1"
+val fs2V = "3.14.0"
 
 val circuitV = "0.5.1"
-val http4sV = "0.23.18"
+val http4sV = "0.23.37"
 
-ThisBuild / crossScalaVersions := Seq("2.12.17", "2.13.18", "3.3.8")
+ThisBuild / crossScalaVersions := Seq("2.13.18", "3.3.8")
 ThisBuild / scalaVersion := "3.3.8"
 
 ThisBuild / testFrameworks += new TestFramework("munit.Framework")
@@ -72,6 +72,6 @@ lazy val commonSettings = Seq(
 
     "org.http4s" %%% "http4s-dsl" % http4sV % Test,
 
-    "org.typelevel" %%% "munit-cats-effect" % "2.0.0-M3" %  Test,
+    "org.typelevel" %%% "munit-cats-effect" % "2.2.1" %  Test,
   )
 )
